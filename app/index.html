@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>LessonPlanner Application</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="http://netdna.bootstrapcdn.com/twitter-bootstrap/2.3.2/css/bootstrap-combined.min.css" rel="stylesheet">
+    <script src="http://ajax.aspnetcdn.com/ajax/jquery/jquery-1.9.0.js"></script>
+    <script src="http://netdna.bootstrapcdn.com/twitter-bootstrap/2.3.2/js/bootstrap.min.js"></script>
+    <script src="http://ajax.aspnetcdn.com/ajax/knockout/knockout-2.2.1.js"></script>
+</head>
+<body>
+    <div class="navbar">
+        <div class="navbar-inner">
+            <a class="brand" href="/home">LessonPlanner</a>
+        </div>
+    </div>
+    <div id="main" class="container">
+        <table class="table table-striped table-hover">
+            <tr><td style="width: 1px;"></td><td><b>Lesson</b></td><td><b>Actions</b></td></tr>
+            <!-- ko foreach: lessons -->
+            <tr>
+                <td>
+                    <span data-bind="visible: covered" class="label label-success">Covered</span>
+                    <span data-bind="visible: !covered()" class="label label-important">On Session</span>
+                </td>
+                <td><p><b data-bind="text: topic"></b></p><p data-bind="text: description"></p></td>
+                <td>
+                    <button data-bind="click: $parent.beginEdit" class="btn">Edit</button>
+                    <button data-bind="click: $parent.remove" class="btn">Delete</button>
+                    <span data-bind="visible: covered">
+                        <button data-bind="click: $parent.markOnSession" class="btn">Mark On Session</button>
+                    </span>
+                    <span data-bind="visible: !covered()">
+                        <button data-bind="click: $parent.markCovered" class="btn">Mark Covered</button>
+                    </span>
+                </td>
+            </tr>
+            <!-- /ko -->
+        </table>
+        <button data-bind="click: beginAdd" class="btn">Add Lesson</button>
+    </div>
+    <div id="add" class="modal hide fade" tabindex="=1" role="dialog" aria-labelledby="addDialogLabel" aria-hidden="true">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+            <h3 id="addDialogLabel">Add Lesson</h3>
+        </div>
+        <div class="modal-body">
+            <form class="form-horizontal">
+                <div class="control-group">
+                    <label class="control-label" for="inputLesson">Lesson</label>
+                    <div class="controls">
+                        <input data-bind="value: topic" type="text" id="inputLesson" placeholder="Lesson Topic" style="width: 150px;">
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label class="control-label" for="inputDescription">Description</label>
+                    <div class="controls">
+                        <input data-bind="value: description" type="text" id="inputDescription" placeholder="Description" style="width: 300px;">
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button data-bind="click: addLesson" class="btn btn-primary">Add Lesson</button>
+            <button class="btn" data-dismiss="modal" aria-hidden="true">Cancel</button>
+        </div>
+    </div>
+    <div id="edit" class="modal hide fade" tabindex="=1" role="dialog" aria-labelledby="editDialogLabel" aria-hidden="true">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+            <h3 id="editDialogLabel">Edit Lesson</h3>
+        </div>
+        <div class="modal-body">
+            <form class="form-horizontal">
+                <div class="control-group">
+                    <label class="control-label" for="inputLesson">Lesson</label>
+                    <div class="controls">
+                        <input data-bind="value: topic" type="text" id="inputLesson" placeholder="Lesson Topic" style="width: 150px;">
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label class="control-label" for="inputDescription">Description</label>
+                    <div class="controls">
+                        <input data-bind="value: description" type="text" id="inputDescription" placeholder="Description" style="width: 300px;">
+                    </div>
+                </div>
+                <div class="control-group">
+                    <div class="controls">
+                        <label class="checkbox">
+                            <input data-bind="checked: covered" type="checkbox"> Covered
+                        </label>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button data-bind="click: editLesson" class="btn btn-primary">Edit Lesson</button>
+            <button class="btn" data-dismiss="modal" aria-hidden="true">Cancel</button>
+        </div>
+    </div>
+    <div id="login" class="modal hide fade" tabindex="=1" role="dialog" aria-labelledby="loginLabel" aria-hidden="true">
+        <div class="modal-header">
+            <h3 id="loginLabel">Log In</h3>
+        </div>
+        <div class="modal-body">
+            <form class="form-horizontal">
+                <div class="control-group">
+                    <label class="control-label" for="inputEmail">Email</label>
+                    <div class="controls">
+                        <input data-bind="value: email" type="text" id="inputEmail" placeholder="Email">
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label class="control-label" for="inputPassword">Password</label>
+                    <div class="controls">
+                        <input data-bind="value: password" type="password" id="inputPassword" placeholder="Password">
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button data-bind="click: login" class="btn btn-primary" data-dismiss="modal" aria-hidden="true">Log In</button>
+        </div>
+    </div>
+    <script type="text/javascript">
+        function LessonsViewModel() {
+            var self = this;
+            self.lessonsURI = 'http://127.0.0.1:5000/LessonPlanner/api/v1/lessons';
+            self.email = "";
+            self.password = "";
+            self.lessons = ko.observableArray();
+
+            self.ajax = function(uri, method, data) {
+                var request = {
+                    url : uri,
+                    type : method,
+                    contentType : "application/json",
+                    accepts : "application/json",
+                    cache : false,
+                    dataType : 'json',
+                    data : JSON.stringify(data),
+                    beforeSend : function(xhr) {
+                        xhr.setRequestHeader("Authorization", "Basic" + btoa(self.email + ":" + self.password));
+                    },
+                    error : function(jqXHR) {
+                        console.log("ajax error" + jqXHR.status);
+                    }
+                };
+                return $.ajax(request);
+            }
+            self.updateLesson = function(lesson, newLesson) {
+                var i = self.lessons.indexOf(lesson);
+                self.lessons()[i].uri(newLesson.uri);
+                self.lessons()[i].topic(newLesson.topic);
+                self.lessons()[i].description(newLesson.description);
+                self.lessons()[i].covered(newLesson.covered);
+            }
+            self.beginAdd = function() {
+                $('#add').modal('show');
+            }
+            self.add = function(lesson) {
+                self.ajax(self.lessonsURI, 'POST', lesson).done(function(data) {
+                    self.lessons.push({
+                        uri : ko.observable(data.lesson.uri),
+                        topic : ko.observable(data.lesson.topic),
+                        description : ko.observable(data.lesson.description),
+                        covered : ko.observable(data.lesson.covered)
+                    });
+                });
+            }
+            self.beginEdit = function(lesson) {
+                editLessonViewModel.setLesson(lesson);
+                $('#edit').modal('show');
+            }
+            self.edit = function(lesson, data) {
+                self.ajax(lesson.uri(), 'PUT', data).done(function(res) {
+                    self.updateLesson(lesson, res.lesson);
+                });
+            }
+            self.remove = function(lesson) {
+                self.ajax(lesson.uri(), 'DELETE').done(function() {
+                    self.lessons.remove(lesson);
+                });
+            }
+            self.markOnSession = function(lesson) {
+                self.ajax(lesson.uri(), 'PUT', { covered : false }).done(function(res) {
+                    self.updateLesson(lesson, res.lesson);
+                });
+            }
+            self.markCovered = function(lesson) {
+                self.ajax(lesson.uri(), 'PUT', { covered : true }).done(function(res) {
+                    self.updateLesson(lesson, res.lesson);
+                });
+            }
+            self.beginLogin = function() {
+                $('#login').modal('show');
+            }
+            self.login = function(email, password) {
+                self.email = email;
+                self.password = password;
+                self.ajax(self.lessonsURI, 'GET').done(function(data) {
+                    for (var i = 0; i < data.lessons.length; i++) {
+                        self.lessons.push({
+                            uri : ko.observable(data.lessons[i].uri),
+                            topic : ko.observable(data.lessons[i].topic),
+                            description : ko.observable(data.lessons[i].description),
+                            covered : ko.observable(data.lessons[i].covered)
+                        });
+                    }
+                }).fail(function(jqXHR) {
+                    if (jqXHR.status == 403)
+                        setTimeout(self.beginLogin, 500);
+                });
+            }
+
+            self.beginLogin();
+        }
+        function AddLessonViewModel() {
+            var self = this;
+            self.topic = ko.observable();
+            self.description = ko.observable();
+
+            self.addLesson = function() {
+                $('#add').modal('hide');
+                lessonViewModel.add({
+                    topic : self.topic(),
+                    description : self.description()
+                });
+                self.topic("");
+                self.description("");
+            }
+        }
+        function EditLessonViewModel() {
+            var self = this;
+            self.topic = ko.observable();
+            self.description = ko.observable();
+            self.covered = ko.observable();
+
+            self.setLesson = function(lesson) {
+                self.lesson = lesson;
+                self.topic(lesson.topic());
+                self.description(lesson.description());
+                self.covered(lesson.covered());
+                $('edit').modal('show');
+            }
+
+            self.editLesson = function() {
+                $('#edit').modal('hide');
+                lessonViewModel.edit(self.lesson, {
+                    topic : self.topic(),
+                    description : self.description(),
+                    covered : self.covered()
+                });
+            }
+        }
+        function LoginViewModel() {
+            var self = this;
+            self.email = ko.observable();
+            self.password = ko.observable();
+
+            self.login = function() {
+                $('#login').modal('hide');
+                lessonViewModel.login(self.email(), self.password());
+            }
+        }
+        var lessonViewModel = new LessonsViewModel();
+        var addLessonViewModel = new AddLessonViewModel();
+        var editLessonViewModel = new EditLessonViewModel();
+        var loginViewModel = new LoginViewModel();
+        ko.applyBindings(lessonViewModel, $('#main')[0]);
+        ko.applyBindings(addLessonViewModel, $('#add')[0]);
+        ko.applyBindings(editLessonViewModel, $('#edit')[0]);
+        ko.applyBindings(loginViewModel, $('#login')[0]);
+    </script>
+</body>
+</html>
